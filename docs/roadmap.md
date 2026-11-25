@@ -1,22 +1,36 @@
 # نقشه راه توسعه
 
-هر فاز با «معیار خروج» بسته می‌شود. زمان‌بندی بعد از مشخص شدن اندازه‌ی تیم و بسته شدن [پرسش‌های باز](open-questions.md) تعیین می‌شود.
+ترکیب نقشه‌ی مرجع (فاز ۵ تا ۱۶) با تصمیم‌های [ADR](adr/README.md). هر فاز با «معیار خروج» بسته می‌شود؛ تست‌ها در [test-plan](test-plan.md) و عملیات در [operations](operations.md) آمده است.
 
 | فاز | محتوا | معیار خروج |
 | --- | --- | --- |
-| A. Discovery/ADR | نیازمندی‌ها، permission matrix، سیاست فایل، quota، retention، ERD، threat model | سند نیازمندی و پرسش‌های باز تأییدشده |
-| B. Foundation (فعلی) | monorepo، lint/typecheck، env validation، Docker dev، migration، health، CI، OpenAPI | `pnpm compose:up` و health endpointها کار می‌کنند؛ CI سبز |
-| C. Identity & Org | OIDC، session، کاربران/واحدها/گروه‌ها، RBAC و ارزیابی ACL | تست منفی scope و privilege boundary سبز |
-| D. Storage & Upload | FileStorage، tus، quota، resume، finalize، checksum | آپلود ۱ GB با قطع شبکه و restart ادامه می‌یابد؛ orphan reconcile |
-| E. Quarantine & Scan | صف، ClamAV، MIME/magic، state machine، publish اتمیک | EICAR رد می‌شود؛ scanner خاموش = fail closed |
-| F. File Management | فهرست، جست‌وجوی نام (pg_trgm)، rename/move، دانلود، Trash، نسخه‌ها | تست مجوز روی همه‌ی عملیات |
-| G. Sharing & Admin | share کاربر/گروه، expiry/revoke، quota/policy، جست‌وجوی Audit | revoke بلافاصله اثر می‌کند |
-| H. Frontend Polish | RTL، upload queue، خطاها، accessibility | تست کاربران پایلوت |
-| I. Hardening & Recovery | تست امنیت/بار/پایداری، Veeam restore (VM/DB/فایل)، runbook | بدون blocker؛ sign-off |
-| J. Pilot/Production | پایلوت یک واحد، انتقال فایل با hash، آموزش | انتشار رسمی |
+| A. نیازمندی و ADR | ساختار کاربران، ماتریس مجوز، سیاست فایل، quota، retention، threat model | پرسش‌های باز تأییدشده |
+| B. Foundation (فعلی) | monorepo، lint/typecheck، env validation، Docker dev، migration، health، CI، OpenAPI | `pnpm compose:up` و health کار می‌کند؛ CI سبز |
+| C. هویت و کاربران | ورود (ADR-0008)، session، سه نقش، ساخت کاربر، quota هر کاربر، CSV import، CLI مدیر ارشد | تست IDOR بین مناطق سبز |
+| D. هسته آپلود | نشست، quota اتمیک، tus 16 MiB، checksum، حداکثر ۳ آپلود هم‌زمان هر کاربر، finalize، cleanup | آپلود ۱ GB با قطع شبکه و restart ادامه می‌یابد |
+| E. امنیت و قرنطینه | صف، ClamAV، scan_jobs، سیاست پسوند/magic bytes، zip bomb، publish اتمیک، هشدار | EICAR رد می‌شود؛ scanner خاموش = fail closed |
+| F. مدیریت فایل و اشتراک | پوشه، جست‌وجو، دانلود با توکن کوتاه‌عمر، Trash، share با انقضا و لغو | تست مجوز روی همه‌ی عملیات |
+| G. نسخه‌بندی و نگهداری | نسخه‌ها، restore به‌صورت نسخه‌ی جدید، retention_policies، legal hold، immutable | job حذف دائمی فقط طبق سیاست عمل می‌کند |
+| H. Backup و DR | PITR دیتابیس، بکاپ مستقل فایل‌ها، restore test | همه‌ی سناریوهای بازیابی آزمایش و مستند شده (موازی با دیگر فازها قابل شروع) |
+| I. رابط کاربری | صفحات کاربر و مدیر در کنار هر فاز؛ بازیابی آپلودها بعد از Refresh، RTL | تست کاربری پایلوت |
+| J. تست جامع | مطابق test-plan | گزارش تست و بدون blocker |
+| K. مانیتورینگ | metrics، هشدارها، داشبورد مدیریتی | هشدار ظرفیت و شکست بکاپ آزمایش شده |
+| L. Production و تحویل | TLS، Firewall، پایلوت یک واحد، مهاجرت فایل با hash، مستندات تحویل | انتشار رسمی و تحویل Runbook |
+
+## بعد از نسخه ۱
+
+1. v1.1: AD/LDAP (ورود سازمانی، sync کاربر و گروه، غیرفعال‌سازی حساب‌های غیرفعال)
+2. v1.2: preview امن PDF/تصویر، جست‌وجوی پیشرفته، برچسب
+3. v1.3: API برای سامانه‌های سازمانی
+4. v1.4: افزونگی (API دوم، Worker بیشتر، Load Balancer، HA)
+5. v2: گردش تأیید، امضای دیجیتال، OCR، آرشیو
+
+## زمان‌بندی مرجع
+
+سند مرجع بازه‌ی ۱۰ تا ۱۳ هفته را پیشنهاد می‌دهد (نیازمندی ۱، زیرساخت ۱، نصب VM ۱، هسته آپلود ۲، امنیت و مدیریت فایل ۲، نسخه‌بندی و Backup ۱، UI ۲، تست و پایلوت ۲ هفته). این عدد بدون تعیین اندازه‌ی تیم قطعی نیست؛ ساختار کاربری سه‌سطحی، سهمیه‌ی هر کاربر و ورود محلی کار اضافه ایجاد می‌کنند.
 
 ## معیارهای عددی پیشنهادی (قابل بازبینی)
 
-- آپلود فایل ۵ GB: مصرف RAM پروسس API ثابت و کمتر از ۵۰۰ MB بالاتر از baseline.
+- آپلود فایل ۵ GB: مصرف RAM پروسس file-service ثابت و کمتر از ۵۰۰ MB بالاتر از baseline.
 - ۱۰ آپلود هم‌زمان ۱ GB بدون خطا و بدون عبور از quota.
-- بعد از restart کامل سرویس‌ها، آپلودهای ناتمام از آخرین offset معتبر ادامه می‌یابند.
+- بعد از restart کامل، آپلودهای ناتمام از آخرین offset معتبر ادامه می‌یابند.
