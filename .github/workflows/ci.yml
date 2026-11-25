@@ -1,0 +1,29 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  api-policy-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # The policy layer has no runtime dependencies: Node runs the TypeScript tests directly.
+      - name: Unit tests (apps/api)
+        working-directory: apps/api
+        run: node --test "src/**/*.test.ts"
+
+  compose-config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate dev compose file
+        run: docker compose --env-file .env.example -f infra/compose/docker-compose.dev.yml config -q
