@@ -1,0 +1,55 @@
+# فقط برای توسعه‌ی محلی. نسخه‌ی imageها هنگام شروع پروژه با compatibility matrix بررسی و قفل شود.
+name: enterprise-file-hub-dev
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-fsb}
+      POSTGRES_DB: ${POSTGRES_DB:-fsb}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    ports:
+      - '127.0.0.1:5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-fsb} -d ${POSTGRES_DB:-fsb}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    # BullMQ: noeviction و persistence الزامی است تا jobها گم نشوند.
+    command: ['redis-server', '--appendonly', 'yes', '--maxmemory-policy', 'noeviction']
+    ports:
+      - '127.0.0.1:6379:6379'
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  clamav:
+    image: clamav/clamav:1.4
+    # اسکن با path روی volume مشترک (فقط خواندنی)؛ بدون محدودیت stream.
+    ports:
+      - '127.0.0.1:3310:3310'
+    volumes:
+      - storage:/storage:ro
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    command: ['start-dev']
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?set KEYCLOAK_ADMIN_PASSWORD in .env}
+    ports:
+      - '127.0.0.1:8081:8080'
+
+volumes:
+  pgdata:
+  redisdata:
+  storage:
