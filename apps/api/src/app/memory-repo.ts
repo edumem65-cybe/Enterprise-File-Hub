@@ -17,37 +17,37 @@ export class MemoryRepo implements Repo {
   alerts: AlertEvent[] = [];
   scanQueue: ScanJob[] = [];
 
-  getUser(id: string): UserRecord | undefined {
+  async getUser(id: string): Promise<UserRecord | undefined> {
     return this.users.get(id);
   }
-  findUserByEmail(email: string): UserRecord | undefined {
+  async findUserByEmail(email: string): Promise<UserRecord | undefined> {
     for (const u of this.users.values()) if (u.email === email) return u;
     return undefined;
   }
-  insertUser(u: UserRecord): void {
+  async insertUser(u: UserRecord): Promise<void> {
     this.users.set(u.id, u);
     this.usage.set(u.id, { usedBytes: 0n, reservedBytes: 0n, fileCount: 0, reservedFiles: 0 });
   }
-  updateUser(u: UserRecord): void {
+  async updateUser(u: UserRecord): Promise<void> {
     this.users.set(u.id, u);
   }
 
-  getUsage(userId: string): Usage {
+  async getUsage(userId: string): Promise<Usage> {
     return this.usage.get(userId) as Usage;
   }
-  reserveQuota(userId: string, bytes: bigint, files: 0 | 1) {
+  async reserveQuota(userId: string, bytes: bigint, files: 0 | 1) {
     const u = this.users.get(userId) as UserRecord;
-    const usage = this.getUsage(userId);
+    const usage = this.peekUsage(userId);
     const r = evaluateReservation(usage, { quotaBytes: u.quotaBytes, maxFiles: u.maxFiles }, bytes, files);
     if (r.ok) this.usage.set(userId, { ...usage, reservedBytes: usage.reservedBytes + bytes, reservedFiles: usage.reservedFiles + files });
     return r;
   }
-  releaseReservation(userId: string, bytes: bigint, files: 0 | 1): void {
-    const usage = this.getUsage(userId);
+  async releaseReservation(userId: string, bytes: bigint, files: 0 | 1): Promise<void> {
+    const usage = this.peekUsage(userId);
     this.usage.set(userId, { ...usage, reservedBytes: usage.reservedBytes - bytes, reservedFiles: usage.reservedFiles - files });
   }
-  commitReservation(userId: string, bytes: bigint, files: 0 | 1): void {
-    const usage = this.getUsage(userId);
+  async commitReservation(userId: string, bytes: bigint, files: 0 | 1): Promise<void> {
+    const usage = this.peekUsage(userId);
     this.usage.set(userId, {
       usedBytes: usage.usedBytes + bytes,
       reservedBytes: usage.reservedBytes - bytes,
@@ -56,69 +56,86 @@ export class MemoryRepo implements Repo {
     });
   }
 
-  countOpenUploads(userId: string): number {
+  async countOpenUploads(userId: string): Promise<number> {
     let n = 0;
     for (const s of this.uploads.values()) if (s.userId === userId && (s.state === 'created' || s.state === 'uploading' || s.state === 'finalizing')) n++;
     return n;
   }
-  insertUpload(s: UploadSessionRecord): void {
+  async insertUpload(s: UploadSessionRecord): Promise<void> {
     this.uploads.set(s.id, s);
   }
-  getUpload(id: string): UploadSessionRecord | undefined {
+  async getUpload(id: string): Promise<UploadSessionRecord | undefined> {
     return this.uploads.get(id);
   }
-  updateUpload(s: UploadSessionRecord): void {
+  async updateUpload(s: UploadSessionRecord): Promise<void> {
     this.uploads.set(s.id, s);
   }
-  findUploadByVersion(versionId: string): UploadSessionRecord | undefined {
+  async findUploadByVersion(versionId: string): Promise<UploadSessionRecord | undefined> {
     for (const s of this.uploads.values()) if (s.versionId === versionId) return s;
     return undefined;
   }
 
-  getFolder(id: string): FolderRecord | undefined {
+  async getFolder(id: string): Promise<FolderRecord | undefined> {
     return this.folders.get(id);
   }
-  folderPermissions(userId: string, folderId: string): ReadonlySet<ContentPermission> {
+  async folderPermissions(userId: string, folderId: string): Promise<ReadonlySet<ContentPermission>> {
     return this.folderAcl.get(`${userId}|${folderId}`) ?? new Set();
   }
-  sharePermissions(userId: string, fileId: string): ReadonlySet<ContentPermission> {
+  async sharePermissions(userId: string, fileId: string): Promise<ReadonlySet<ContentPermission>> {
     return this.shares.get(`${userId}|${fileId}`) ?? new Set();
   }
 
-  insertFile(f: FileRecord): void {
+  async insertFile(f: FileRecord): Promise<void> {
     this.files.set(f.id, f);
   }
-  getFile(id: string): FileRecord | undefined {
+  async getFile(id: string): Promise<FileRecord | undefined> {
     return this.files.get(id);
   }
-  updateFile(f: FileRecord): void {
+  async updateFile(f: FileRecord): Promise<void> {
     this.files.set(f.id, f);
   }
-  insertVersion(v: VersionRecord): void {
+  async insertVersion(v: VersionRecord): Promise<void> {
     this.versions.set(v.id, v);
   }
-  getVersion(id: string): VersionRecord | undefined {
+  async getVersion(id: string): Promise<VersionRecord | undefined> {
     return this.versions.get(id);
   }
-  updateVersion(v: VersionRecord): void {
+  async updateVersion(v: VersionRecord): Promise<void> {
     this.versions.set(v.id, v);
   }
-  nextVersionNo(fileId: string): number {
+  async nextVersionNo(fileId: string): Promise<number> {
     let max = 0;
     for (const v of this.versions.values()) if (v.fileId === fileId && v.versionNo > max) max = v.versionNo;
     return max + 1;
   }
 
-  audit(e: AuditEvent): void {
+  async audit(e: AuditEvent): Promise<void> {
     this.auditLog.push(e);
   }
-  alert(a: AlertEvent): void {
+  async alert(a: AlertEvent): Promise<void> {
     this.alerts.push(a);
   }
-  enqueueScan(job: ScanJob): void {
+  async enqueueScan(job: ScanJob): Promise<void> {
     this.scanQueue.push(job);
   }
-  transaction<T>(fn: () => T): T {
+  async transaction<T>(fn: () => Promise<T>): Promise<T> {
     return fn();
+  }
+
+  // Synchronous inspection helpers for tests (not part of the Repo port).
+  peekUser(id: string): UserRecord | undefined {
+    return this.users.get(id);
+  }
+  peekUsage(id: string): Usage {
+    return this.usage.get(id) as Usage;
+  }
+  peekUpload(id: string): UploadSessionRecord | undefined {
+    return this.uploads.get(id);
+  }
+  peekFile(id: string): FileRecord | undefined {
+    return this.files.get(id);
+  }
+  peekVersion(id: string): VersionRecord | undefined {
+    return this.versions.get(id);
   }
 }
