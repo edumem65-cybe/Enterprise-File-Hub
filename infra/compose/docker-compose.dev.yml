@@ -1,19 +1,19 @@
-# فقط برای توسعه‌ی محلی. نسخه‌ی imageها هنگام شروع پروژه با compatibility matrix بررسی و قفل شود.
+# فقط برای توسعه‌ی محلی. نسخه‌ی image‌ها هنگام شروع پروژه با compatibility matrix بررسی و قفل شود.
 name: enterprise-file-hub-dev
 
 services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-fsb}
-      POSTGRES_DB: ${POSTGRES_DB:-fsb}
+      POSTGRES_USER: ${POSTGRES_USER:-filehub}
+      POSTGRES_DB: ${POSTGRES_DB:-filehub}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
     ports:
       - '127.0.0.1:5432:5432'
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-fsb} -d ${POSTGRES_DB:-fsb}']
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-filehub} -d ${POSTGRES_DB:-filehub}']
       interval: 10s
       timeout: 5s
       retries: 5
