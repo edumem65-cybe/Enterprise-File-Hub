@@ -13,7 +13,7 @@ test('blob keys are random 32-char hex and validated', () => {
 });
 
 test('stage paths are sharded for blobs and always inside the root', () => {
-  const root = path.join(tmpdir(), 'fsb-root');
+  const root = path.join(tmpdir(), 'filehub-root');
   const key = 'ab' + 'cd' + '0'.repeat(28);
   assert.equal(stagePath(root, 'blobs', key), path.join(root, 'blobs', 'ab', 'cd', key));
   assert.equal(stagePath(root, 'incoming', key), path.join(root, 'incoming', key));
@@ -23,7 +23,7 @@ test('stage paths are sharded for blobs and always inside the root', () => {
 });
 
 test('promote moves a file through all stages atomically and never overwrites', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'fsb-'));
+  const root = mkdtempSync(path.join(tmpdir(), 'filehub-'));
   try {
     ensureStageDirs(root);
     assertSameFilesystem(root);
@@ -43,7 +43,7 @@ test('promote moves a file through all stages atomically and never overwrites', 
 });
 
 test('missing stage directory is reported', () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'fsb-'));
+  const root = mkdtempSync(path.join(tmpdir(), 'filehub-'));
   try {
     assert.throws(() => assertSameFilesystem(root), /missing storage directory/);
   } finally {
