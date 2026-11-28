@@ -25,13 +25,19 @@ export function isUploadExpired(expiresAt: number, now: number, state: UploadSta
   return (state === 'created' || state === 'uploading') && now >= expiresAt;
 }
 
-export type ScanResult = { kind: 'clean' } | { kind: 'infected'; signature: string } | { kind: 'error' } | { kind: 'timeout' } | { kind: 'limit' };
+export type ScanResult =
+  | { kind: 'clean' }
+  | { kind: 'infected'; signature: string }
+  | { kind: 'error' }
+  | { kind: 'timeout' }
+  | { kind: 'limit' }
+  | { kind: 'integrity_mismatch' }; // the bytes on disk differ from the bytes that were uploaded
 
 export interface ScanDecision {
   scanState: 'clean' | 'rejected' | 'failed' | 'quarantined';
   retry: boolean;
   retryDelayMs: number;
-  rejectReason: 'infected' | 'scan_limit' | null;
+  rejectReason: 'infected' | 'scan_limit' | 'integrity_mismatch' | null;
   alert: boolean; // notify super admin and the owner's region manager
 }
 
@@ -46,6 +52,8 @@ export function decideScanOutcome(result: ScanResult, attempt: number, maxAttemp
       return { scanState: 'rejected', retry: false, retryDelayMs: 0, rejectReason: 'infected', alert: true };
     case 'limit':
       return { scanState: 'rejected', retry: false, retryDelayMs: 0, rejectReason: 'scan_limit', alert: true };
+    case 'integrity_mismatch':
+      return { scanState: 'rejected', retry: false, retryDelayMs: 0, rejectReason: 'integrity_mismatch', alert: true };
     default:
       if (attempt < maxAttempts) {
         const delay = Math.min(30_000 * 2 ** (attempt - 1), 600_000);
