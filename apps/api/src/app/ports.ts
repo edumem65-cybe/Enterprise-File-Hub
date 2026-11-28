@@ -59,6 +59,7 @@ export interface VersionRecord {
   sha256: string;
   scanState: ScanState;
   rejectReason: string | null;
+  createdBy: string;
 }
 
 export interface AuditEvent {
@@ -85,43 +86,43 @@ export interface ScanJob {
 
 // Persistence port. The PostgreSQL adapter implements it; tests use the in-memory one.
 export interface Repo {
-  getUser(id: string): UserRecord | undefined;
-  findUserByEmail(email: string): UserRecord | undefined;
-  insertUser(u: UserRecord): void;
-  updateUser(u: UserRecord): void;
+  getUser(id: string): Promise<UserRecord | undefined>;
+  findUserByEmail(email: string): Promise<UserRecord | undefined>;
+  insertUser(u: UserRecord): Promise<void>;
+  updateUser(u: UserRecord): Promise<void>;
 
-  getUsage(userId: string): Usage;
-  reserveQuota(userId: string, bytes: bigint, files: 0 | 1): { ok: true } | { ok: false; reason: 'quota_bytes_exceeded' | 'quota_files_exceeded' };
-  releaseReservation(userId: string, bytes: bigint, files: 0 | 1): void;
-  commitReservation(userId: string, bytes: bigint, files: 0 | 1): void;
+  getUsage(userId: string): Promise<Usage>;
+  reserveQuota(userId: string, bytes: bigint, files: 0 | 1): Promise<{ ok: true } | { ok: false; reason: 'quota_bytes_exceeded' | 'quota_files_exceeded' }>;
+  releaseReservation(userId: string, bytes: bigint, files: 0 | 1): Promise<void>;
+  commitReservation(userId: string, bytes: bigint, files: 0 | 1): Promise<void>;
 
-  countOpenUploads(userId: string): number;
-  insertUpload(s: UploadSessionRecord): void;
-  getUpload(id: string): UploadSessionRecord | undefined;
-  updateUpload(s: UploadSessionRecord): void;
-  findUploadByVersion(versionId: string): UploadSessionRecord | undefined;
+  countOpenUploads(userId: string): Promise<number>;
+  insertUpload(s: UploadSessionRecord): Promise<void>;
+  getUpload(id: string): Promise<UploadSessionRecord | undefined>;
+  updateUpload(s: UploadSessionRecord): Promise<void>;
+  findUploadByVersion(versionId: string): Promise<UploadSessionRecord | undefined>;
 
-  getFolder(id: string): FolderRecord | undefined;
-  folderPermissions(userId: string, folderId: string): ReadonlySet<ContentPermission>;
-  sharePermissions(userId: string, fileId: string): ReadonlySet<ContentPermission>;
+  getFolder(id: string): Promise<FolderRecord | undefined>;
+  folderPermissions(userId: string, folderId: string): Promise<ReadonlySet<ContentPermission>>;
+  sharePermissions(userId: string, fileId: string): Promise<ReadonlySet<ContentPermission>>;
 
-  insertFile(f: FileRecord): void;
-  getFile(id: string): FileRecord | undefined;
-  updateFile(f: FileRecord): void;
-  insertVersion(v: VersionRecord): void;
-  getVersion(id: string): VersionRecord | undefined;
-  updateVersion(v: VersionRecord): void;
-  nextVersionNo(fileId: string): number;
+  insertFile(f: FileRecord): Promise<void>;
+  getFile(id: string): Promise<FileRecord | undefined>;
+  updateFile(f: FileRecord): Promise<void>;
+  insertVersion(v: VersionRecord): Promise<void>;
+  getVersion(id: string): Promise<VersionRecord | undefined>;
+  updateVersion(v: VersionRecord): Promise<void>;
+  nextVersionNo(fileId: string): Promise<number>;
 
-  audit(e: AuditEvent): void;
-  alert(a: AlertEvent): void;
-  enqueueScan(job: ScanJob): void;
-  transaction<T>(fn: () => T): T;
+  audit(e: AuditEvent): Promise<void>;
+  alert(a: AlertEvent): Promise<void>;
+  enqueueScan(job: ScanJob): Promise<void>;
+  transaction<T>(fn: () => Promise<T>): Promise<T>;
 }
 
 export interface StoragePort {
-  promote(from: Stage, to: Stage, key: string): void;
-  remove(stage: Stage, key: string): void;
+  promote(from: Stage, to: Stage, key: string): Promise<void>;
+  remove(stage: Stage, key: string): Promise<void>;
 }
 
 export interface Config {
