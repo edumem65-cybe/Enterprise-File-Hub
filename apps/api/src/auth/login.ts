@@ -19,11 +19,11 @@ export type LoginResult = { ok: true; userId: string; mustChangePassword: boolea
 // One generic error for every failure (unknown user, wrong password, locked, disabled, expired) so the response
 // does not reveal which accounts exist. Unknown users still pay for a hash to keep timing similar.
 export async function loginLocal(repo: Repo, email: string, password: string, now: number): Promise<LoginResult> {
-  const user = repo.findUserByEmail(email.trim().toLowerCase());
+  const user = await repo.findUserByEmail(email.trim().toLowerCase());
   if (user === undefined || user.passwordHash === null) {
     dummyHash ??= hashPassword('timing-equalisation-only');
     await verifyPassword(password, await dummyHash);
-    repo.audit({ at: now, actorId: null, action: 'login', outcome: 'denied', metadata: { reason: 'unknown_user' } });
+    await repo.audit({ at: now, actorId: null, action: 'login', outcome: 'denied', metadata: { reason: 'unknown_user' } });
     return { ok: false, code: 'invalid_credentials' };
   }
   const blocked =
@@ -32,13 +32,13 @@ export async function loginLocal(repo: Repo, email: string, password: string, no
   if (blocked || !valid) {
     if (!valid && !blocked) {
       const failed = user.failedLoginCount + 1;
-      repo.updateUser({ ...user, failedLoginCount: failed, lockedUntil: lockUntil(failed, now) });
+      await repo.updateUser({ ...user, failedLoginCount: failed, lockedUntil: lockUntil(failed, now) });
     }
-    repo.audit({ at: now, actorId: user.id, action: 'login', outcome: 'denied', metadata: { reason: blocked ? 'blocked' : 'bad_password' } });
+    await repo.audit({ at: now, actorId: user.id, action: 'login', outcome: 'denied', metadata: { reason: blocked ? 'blocked' : 'bad_password' } });
     return { ok: false, code: 'invalid_credentials' };
   }
-  repo.updateUser({ ...user, failedLoginCount: 0, lockedUntil: null });
-  repo.audit({ at: now, actorId: user.id, action: 'login', outcome: 'success' });
+  await repo.updateUser({ ...user, failedLoginCount: 0, lockedUntil: null });
+  await repo.audit({ at: now, actorId: user.id, action: 'login', outcome: 'success' });
   return { ok: true, userId: user.id, mustChangePassword: user.mustChangePassword };
 }
 
