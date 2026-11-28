@@ -1,13 +1,15 @@
 {
-  "name": "@fsb/api",
+  "name": "@file-hub/api",
   "private": true,
   "type": "module",
   "scripts": {
     "test": "node --test \"src/**/*.test.ts\"",
-    "typecheck": "tsc -p ."
+    "typecheck": "tsc -p .",
+    "test:integration": "node --test \"src/**/*.integration.test.ts\""
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "typescript": "^5.8.0"
+    "typescript": "^5.8.0",
+    "pg": "^8.13.0"
   }
 }
