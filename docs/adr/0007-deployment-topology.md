@@ -6,19 +6,19 @@
 
 | VM | سرویس‌ها |
 | --- | --- |
-| FSB-APP | nginx، web (Next.js)، api (`ROLE=api`) |
-| FSB-DB | PostgreSQL |
-| FSB-FILE | file-service (`ROLE=file`: tus + دانلود)، worker، Redis، ClamAV، nginx داخلی، volume ذخیره‌سازی |
+| FILE-APP | nginx، web (Next.js)، api (`ROLE=api`) |
+| FILE-DB | PostgreSQL |
+| FILE-STORE | file-service (`ROLE=file`: tus + دانلود)، worker، Redis، ClamAV، nginx داخلی، volume ذخیره‌سازی |
 
 - **یک کدبیس، چند نقش اجرا:** `apps/api` با متغیر `ROLE` ماژول‌های لازم را لود می‌کند (`api`: auth، users، پوشه، متادیتا، share، audit؛ `file`: upload، download، storage). همه‌ی منطق مجوز در یک کتابخانه‌ی مشترک است.
-- **فقط FSB-FILE ذخیره‌سازی را mount می‌کند.** این هم rename اتمیک و اسکن با path را ممکن می‌کند و هم اگر لایه‌ی وب نفوذ شد، مسیر مستقیم به فایل‌ها ندارد.
+- **فقط FILE-STORE ذخیره‌سازی را mount می‌کند.** این هم rename اتمیک و اسکن با path را ممکن می‌کند و هم اگر لایه‌ی وب نفوذ شد، مسیر مستقیم به فایل‌ها ندارد.
 - **آپلود:** api بعد از authz و رزرو quota یک توکن کوتاه‌عمر (متصل به شناسه‌ی نشست و کاربر) می‌دهد؛ file-service هر درخواست tus را با توکن و وضعیت نشست در DB اعتبارسنجی می‌کند.
-- **دانلود:** api مجوز را می‌سنجد، Audit ثبت می‌کند و توکن دانلود کمتر از ۶۰ ثانیه (متصل به نسخه و کاربر) می‌دهد؛ nginx روی FSB-FILE با `X-Accel-Redirect` فایل را می‌فرستد.
-- **صف:** Redis فقط روی `localhost` همان VM. api کار را در جدول `outbox` می‌نویسد و یک relay روی FSB-FILE آن را به BullMQ می‌ریزد؛ پس Redis هرگز از شبکه در دسترس نیست.
-- **شبکه (Firewall):** APP→DB و FILE→DB (نقش دیتابیس جدا با حداقل مجوز برای هر کدام)؛ APP→FILE فقط روی HTTPS داخلی؛ ClamAV و Redis فقط محلی.
+- **دانلود:** api مجوز را می‌سنجد، Audit ثبت می‌کند و توکن دانلود کمتر از ۶۰ ثانیه (متصل به نسخه و کاربر) می‌دهد؛ nginx روی FILE-STORE با `X-Accel-Redirect` فایل را می‌فرستد.
+- **صف:** Redis فقط روی `localhost` همان VM. api کار را در جدول `outbox` می‌نویسد و یک relay روی FILE-STORE آن را به BullMQ می‌ریزد؛ پس Redis هرگز از شبکه در دسترس نیست.
+- **شبکه (Firewall):** APP→DB و STORE→DB (نقش دیتابیس جدا با حداقل مجوز برای هر کدام)؛ APP→STORE فقط روی HTTPS داخلی؛ ClamAV و Redis فقط محلی.
 
 ## پیامدها
 
-- قطع FSB-FILE یعنی آپلود و دانلود متوقف می‌شود ولی ورود و UI در دسترس می‌ماند.
+- قطع FILE-STORE یعنی آپلود و دانلود متوقف می‌شود ولی ورود و UI در دسترس می‌ماند.
 - در نسخه اول HA نداریم؛ تکیه‌گاه‌های تک‌نقطه‌ای صریح در مستندات تحویل می‌آید. v1.4 هر نقش را چندپاره می‌کند.
 - در آینده با اینترفیس `FileStorage` می‌توان MinIO یا Object Storage اضافه کرد؛ فعلاً لازم نیست.
