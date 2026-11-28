@@ -48,3 +48,8 @@ test('scan errors retry with backoff, then fail closed with an alert', () => {
   assert.deepEqual([last.scanState, last.retry, last.alert], ['failed', false, true]);
   assert.equal(decideScanOutcome({ kind: 'error' }, 10, 20).retryDelayMs, 600_000); // capped
 });
+
+test('integrity mismatch is rejected with an alert and never retried', () => {
+  const d = decideScanOutcome({ kind: 'integrity_mismatch' }, 1);
+  assert.deepEqual([d.scanState, d.rejectReason, d.alert, d.retry], ['rejected', 'integrity_mismatch', true, false]);
+});
