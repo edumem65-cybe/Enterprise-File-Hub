@@ -48,7 +48,7 @@ async function seed(): Promise<{ repo: MemoryRepo; user: UserRecord }> {
     quotaBytes: 1000n, maxFiles: 5, passwordHash: await hashPassword('the-right-password', FAST), mustChangePassword: false,
     failedLoginCount: 0, lockedUntil: null, accountExpiresAt: null,
   };
-  repo.insertUser(user);
+  await repo.insertUser(user);
   return { repo, user };
 }
 
@@ -58,25 +58,25 @@ test('login: success resets the counters; every failure looks the same', async (
   assert.deepEqual(await loginLocal(repo, 'ALI@example.com ', 'the-right-password', t), { ok: true, userId: 'u1', mustChangePassword: false });
   assert.deepEqual(await loginLocal(repo, 'ali@example.com', 'wrong', t), { ok: false, code: 'invalid_credentials' });
   assert.deepEqual(await loginLocal(repo, 'nobody@example.com', 'wrong', t), { ok: false, code: 'invalid_credentials' });
-  assert.equal(repo.getUser('u1')?.failedLoginCount, 1);
+  assert.equal(repo.peekUser('u1')?.failedLoginCount, 1);
   await loginLocal(repo, 'ali@example.com', 'the-right-password', t);
-  assert.equal(repo.getUser('u1')?.failedLoginCount, 0);
+  assert.equal(repo.peekUser('u1')?.failedLoginCount, 0);
 });
 
 test('login: five failures lock the account even for the right password, then it recovers', async () => {
   const { repo } = await seed();
   const t = 5_000_000;
   for (let i = 0; i < MAX_FAILURES; i++) await loginLocal(repo, 'ali@example.com', 'wrong', t);
-  assert.equal(repo.getUser('u1')?.lockedUntil, t + 15 * 60_000);
+  assert.equal(repo.peekUser('u1')?.lockedUntil, t + 15 * 60_000);
   assert.equal((await loginLocal(repo, 'ali@example.com', 'the-right-password', t + 1000)).ok, false);
   assert.equal((await loginLocal(repo, 'ali@example.com', 'the-right-password', t + 15 * 60_000 + 1)).ok, true);
 });
 
 test('login: disabled and expired accounts are refused', async () => {
   const { repo, user } = await seed();
-  repo.updateUser({ ...user, status: 'disabled' });
+  await repo.updateUser({ ...user, status: 'disabled' });
   assert.equal((await loginLocal(repo, 'ali@example.com', 'the-right-password', 1)).ok, false);
-  repo.updateUser({ ...user, accountExpiresAt: 100 });
+  await repo.updateUser({ ...user, accountExpiresAt: 100 });
   assert.equal((await loginLocal(repo, 'ali@example.com', 'the-right-password', 101)).ok, false);
   assert.equal((await loginLocal(repo, 'ali@example.com', 'the-right-password', 99)).ok, true);
 });
